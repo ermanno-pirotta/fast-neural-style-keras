@@ -9,6 +9,7 @@ from scipy.misc import imsave
 import time
 import numpy as np
 import argparse
+import os.path
 
 from keras.callbacks import TensorBoard
 from scipy import ndimage
@@ -39,6 +40,8 @@ def main(args):
     tv_weight= args.tv_weight
     style= args.style
     img_width = img_height =  args.image_size
+    save_itr = args.save_itr
+    skip_to_itr = args.skip_to_itr
 
     style_image_path = get_style_img_path(style)
 
@@ -47,7 +50,9 @@ def main(args):
     model.summary()
 
 
-    nb_epoch = 82785 *2
+    #nb_epoch = 82785 *2
+    #train_batchsize =  1
+    nb_epoch = 40000
     train_batchsize =  1
     train_image_path = "images/train/"
 
@@ -60,22 +65,26 @@ def main(args):
 
     dummy_y = np.zeros((train_batchsize,img_width,img_height,3)) # Dummy output, not used since we use regularizers to train
 
- 
+    train_saved_model = style+'_weights.h5'
 
-    #model.load_weights(style+'_weights.h5',by_name=False)
+    if os.path.exists(train_saved_model):
+        print('loading pre-saved model from path %s' % train_saved_model)
+        model.load_weights(train_saved_model,by_name=False)
 
-    skip_to = 0
+    skip_to = skip_to_itr
 
     i=0
     t1 = time.time()
     for x in datagen.flow_from_directory(train_image_path, class_mode=None, batch_size=train_batchsize,
-        target_size=(img_width, img_height), shuffle=False):    
+        target_size=(img_width, img_height), shuffle=False):
+        print("epoc: ", i)
+
         if i > nb_epoch:
             break
 
         if i < skip_to:
             i+=train_batchsize
-            if i % 1000 ==0:
+            if i % skip_to_itr ==0:
                 print("skip to: %d" % i)
 
             continue
@@ -87,8 +96,7 @@ def main(args):
             print(hist,(time.time() -t1))
             t1 = time.time()
 
-        if i % 500 == 0:
-            print("epoc: ", i)
+        if i % save_itr == 0:
             val_x = net.predict(x)
 
             display_img(i, x[0], style)
@@ -112,6 +120,8 @@ if __name__ == "__main__":
     parser.add_argument('--content_weight', default=1.0, type=float)
     parser.add_argument('--style_weight', default=4.0, type=float)
     parser.add_argument('--image_size', default=256, type=int)
+    parser.add_argument('--save_itr', default=10, type=int)
+    parser.add_argument('--skip_to_itr', default=0, type=int)
 
     args = parser.parse_args()
     main(args)
