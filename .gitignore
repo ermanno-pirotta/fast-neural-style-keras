@@ -4,3 +4,7 @@
 *.jpg
 images/output
 images/train
+*.h5
+.idea
+pretrained
+*.sh
